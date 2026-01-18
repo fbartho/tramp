@@ -1,0 +1,5 @@
+root = true
+
+[[rules]]
+binary_pattern = ".*/echo$"
+arg_rewrite = "s/hello/goodbye/"

@@ -4,7 +4,7 @@ A CLI tool for proxying commands with pre/post hooks and trampolines.
 
 ## Overview
 
-**Tramp** (short for Trampoline) wraps command execution with configurable hooks, enabling:
+**`tramp`** (short for Trampoline) wraps command execution with configurable hooks, enabling:
 
 - **Pre-hooks**: Rewrite CLI commands before execution
 - **Post-hooks**: Process or transform command output
@@ -83,6 +83,11 @@ pre_hook = "/path/to/pre-hook.sh"
 cwd_pattern = ".*/my-project$"
 binary_pattern = ".*/npm$"
 alternate_command = "/usr/local/bin/pnpm"
+
+# Intercept hook: completely replace command execution
+[[rules]]
+binary_pattern = ".*/my-custom-tool$"
+intercept_hook = "/path/to/intercept.sh"
 ```
 
 Or use inline table syntax (both parse identically):
@@ -91,13 +96,85 @@ Or use inline table syntax (both parse identically):
 root = true
 
 # Option B: Inline tables syntax
-*TOML parsers may complain if you use `#` comments inside one of th e rules*
+*TOML parsers may complain if you use `#` comments inside one of the rules*
 
 rules = [
   { binary_pattern = ".*/cargo$", arg_rewrite = "s/^build$/build --release/", pre_hook = "/path/to/pre-hook.sh" },
   { cwd_pattern = ".*/my-project$", binary_pattern = ".*/npm$", alternate_command = "/usr/local/bin/pnpm" },
   { binary_pattern = ".*/kubectl$", command_rewrite = "s/kubectl/kubectl --context=dev/" },
 ]
+```
+
+## Hook Types
+
+### Pre-hooks
+
+Run before the command executes. If a pre-hook exits with non-zero, the command is aborted.
+
+```toml
+[[rules]]
+binary_pattern = ".*/cargo$"
+pre_hook = "/path/to/pre-hook.sh"
+```
+
+### Post-hooks
+
+Run after the command completes. Receive `TRAMP_EXIT_CODE` with the command's exit status.
+
+```toml
+[[rules]]
+binary_pattern = ".*/cargo$"
+post_hook = "/path/to/post-hook.sh"
+```
+
+### Intercept hooks
+
+**Completely replace** command execution. The original command never runs—the intercept hook runs instead. Useful for:
+- Mocking commands in development/testing
+- Implementing custom command behavior
+- Redirecting commands to different implementations
+
+```toml
+[[rules]]
+binary_pattern = ".*/deploy$"
+intercept_hook = "/path/to/intercept.sh"
+```
+
+**Example intercept hook:**
+
+```bash
+#!/bin/bash
+# intercept.sh - Replace 'deploy' with a dry-run in development
+
+echo "Intercepted: $TRAMP_ORIGINAL_BINARY $TRAMP_ORIGINAL_ARGS"
+echo "Would deploy from $TRAMP_CWD"
+echo "(Dry run - no actual deployment)"
+exit 0
+```
+
+The intercept hook's exit code becomes tramp's exit code.
+
+## Hook Environment Variables
+
+When hooks execute, tramp provides context via environment variables:
+
+| Variable | Description |
+|----------|-------------|
+| `TRAMP_ORIGINAL_BINARY` | Path to the original command |
+| `TRAMP_ORIGINAL_ARGS` | Original arguments as a string |
+| `TRAMP_ORIGINAL_ARG_N` | Individual arguments (0-indexed) |
+| `TRAMP_CWD` | Working directory |
+| `TRAMP_HOOK_TYPE` | `pre`, `post`, or `intercept` |
+| `TRAMP_EXIT_CODE` | Exit code (post-hooks only) |
+
+**Example hook:**
+
+```bash
+#!/bin/bash
+# Log failed builds
+if [[ "$TRAMP_EXIT_CODE" != "0" ]]; then
+    echo "Build failed in $TRAMP_CWD" >> ~/.build-failures.log
+fi
 ```
 
 ## Features
@@ -110,6 +187,15 @@ rules = [
 - Argument rewriting via regex
 - Full command rewriting via regex
 - Alternate command substitution
+
+## Security Considerations
+
+Tramp executes hooks defined in `.tramp.toml` configuration files. When working in untrusted directories (e.g., cloned repositories from unknown sources), be aware that a malicious `.tramp.toml` could execute arbitrary code.
+
+**Recommendations:**
+- Review `.tramp.toml` files in new projects before running tramp
+- Use `no-external-lookup = true` in your `~/.tramp.toml` to prevent local configs from overriding your hooks
+- In CI environments, use `root-config-lookup-disable-env-var = "CI"` to skip user configs
 
 ## License
 

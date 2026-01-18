@@ -1,0 +1,5 @@
+# Parent config
+
+[[rules]]
+binary_pattern = ".*/npm$"
+alternate_command = "/usr/local/bin/pnpm"

@@ -1,0 +1,6 @@
+# Child config - more specific rules
+
+[[rules]]
+binary_pattern = ".*/cargo$"
+arg_rewrite = "s/^build$/build --release/"
+pre_hook = "../../scripts/test_pre_hook.sh"
