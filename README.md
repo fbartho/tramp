@@ -28,8 +28,8 @@ A developer wants to extract particular events from their workflow to their dail
 ## Installation
 
 ```bash
-# From crates.io
-cargo install tramp
+# From crates.io (installs as 'tramp')
+cargo install tramp-cli
 
 # From GitHub
 cargo install --git https://github.com/fbartho/tramp
