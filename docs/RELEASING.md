@@ -33,8 +33,8 @@ Update the version in `Cargo.toml`:
 
 ```bash
 git add Cargo.toml
-git commit -m "Release vX.Y.Z"
-git tag -a vX.Y.Z -m "Release vX.Y.Z"
+git commit -m "vX.Y.Z"
+git tag -a vX.Y.Z
 ```
 
 ### 3. Push
