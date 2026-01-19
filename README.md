@@ -194,7 +194,8 @@ Tramp executes hooks defined in `.tramp.toml` configuration files. When working 
 
 **Recommendations:**
 - Review `.tramp.toml` files in new projects before running tramp
-- Use `no-external-lookup = true` in your `~/.tramp.toml` to prevent local configs from overriding your hooks
+- Use `root = true` in your `/path/to/repo/.tramp.toml` to make it skip all intervening directories, and jump to your `~/.tramp.toml`
+- Use `no-external-lookup = true` in your `/path/to/repo/.tramp.toml` to prevent local configs from overriding your hooks (but that defeats giving your developers options to hook into the trampoline!)
 - In CI environments, use `root-config-lookup-disable-env-var = "CI"` to skip user configs
 
 ## License
