@@ -191,17 +191,8 @@ arg_rewrite = "s/build/build --release/"
 }
 
 // ============================================================================
-// Command execution tests
+// Command execution tests (Unix only - these use Unix commands)
 // ============================================================================
-
-#[test]
-fn test_run_simple_command() {
-	tramp_cmd()
-		.args(["echo", "hello", "world"])
-		.assert()
-		.success()
-		.stdout(predicate::str::contains("hello world"));
-}
 
 #[test]
 fn test_command_not_found() {
@@ -212,11 +203,23 @@ fn test_command_not_found() {
 		.stderr(predicate::str::contains("not found"));
 }
 
+#[cfg(unix)]
+#[test]
+fn test_run_simple_command() {
+	tramp_cmd()
+		.args(["echo", "hello", "world"])
+		.assert()
+		.success()
+		.stdout(predicate::str::contains("hello world"));
+}
+
+#[cfg(unix)]
 #[test]
 fn test_command_exit_code_propagates() {
 	tramp_cmd().args(["sh", "-c", "exit 42"]).assert().code(42);
 }
 
+#[cfg(unix)]
 #[test]
 fn test_command_with_args() {
 	tramp_cmd()
@@ -227,9 +230,10 @@ fn test_command_with_args() {
 }
 
 // ============================================================================
-// Rule matching and rewriting tests
+// Rule matching and rewriting tests (Unix only)
 // ============================================================================
 
+#[cfg(unix)]
 #[test]
 fn test_arg_rewrite() {
 	let temp_dir = tempfile::tempdir().unwrap();
@@ -256,6 +260,7 @@ arg_rewrite = "s/hello/goodbye/"
 		.stdout(predicate::str::contains("goodbye world"));
 }
 
+#[cfg(unix)]
 #[test]
 fn test_alternate_command() {
 	let temp_dir = tempfile::tempdir().unwrap();
@@ -282,6 +287,7 @@ alternate_command = "true"
 		.success();
 }
 
+#[cfg(unix)]
 #[test]
 fn test_no_matching_rule_runs_command_unchanged() {
 	let temp_dir = tempfile::tempdir().unwrap();
@@ -309,11 +315,14 @@ arg_rewrite = "s/build/test/"
 }
 
 // ============================================================================
-// Hook tests
+// Hook tests (Unix only - hooks use shell scripts)
 // ============================================================================
 
+#[cfg(unix)]
 #[test]
 fn test_pre_hook_runs_before_command() {
+	use std::os::unix::fs::PermissionsExt;
+
 	let temp_dir = tempfile::tempdir().unwrap();
 	let config_path = temp_dir.path().join(".tramp.toml");
 	let hook_path = temp_dir.path().join("pre_hook.sh");
@@ -325,12 +334,7 @@ fn test_pre_hook_runs_before_command() {
 		format!("#!/bin/bash\ntouch {}\n", marker_path.to_string_lossy()),
 	)
 	.unwrap();
-
-	#[cfg(unix)]
-	{
-		use std::os::unix::fs::PermissionsExt;
-		fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755)).unwrap();
-	}
+	fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755)).unwrap();
 
 	fs::write(
 		&config_path,
@@ -359,8 +363,11 @@ pre_hook = "{}"
 	);
 }
 
+#[cfg(unix)]
 #[test]
 fn test_pre_hook_failure_aborts_command() {
+	use std::os::unix::fs::PermissionsExt;
+
 	let temp_dir = tempfile::tempdir().unwrap();
 	let config_path = temp_dir.path().join(".tramp.toml");
 	let hook_path = temp_dir.path().join("pre_hook.sh");
@@ -368,12 +375,7 @@ fn test_pre_hook_failure_aborts_command() {
 
 	// Create a pre-hook that fails
 	fs::write(&hook_path, "#!/bin/bash\nexit 1\n").unwrap();
-
-	#[cfg(unix)]
-	{
-		use std::os::unix::fs::PermissionsExt;
-		fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755)).unwrap();
-	}
+	fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755)).unwrap();
 
 	fs::write(
 		&config_path,
@@ -407,8 +409,11 @@ pre_hook = "{}"
 	);
 }
 
+#[cfg(unix)]
 #[test]
 fn test_post_hook_runs_after_command() {
+	use std::os::unix::fs::PermissionsExt;
+
 	let temp_dir = tempfile::tempdir().unwrap();
 	let config_path = temp_dir.path().join(".tramp.toml");
 	let hook_path = temp_dir.path().join("post_hook.sh");
@@ -420,12 +425,7 @@ fn test_post_hook_runs_after_command() {
 		format!("#!/bin/bash\ntouch {}\n", marker_path.to_string_lossy()),
 	)
 	.unwrap();
-
-	#[cfg(unix)]
-	{
-		use std::os::unix::fs::PermissionsExt;
-		fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755)).unwrap();
-	}
+	fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755)).unwrap();
 
 	fs::write(
 		&config_path,
@@ -454,8 +454,11 @@ post_hook = "{}"
 	);
 }
 
+#[cfg(unix)]
 #[test]
 fn test_post_hook_receives_exit_code() {
+	use std::os::unix::fs::PermissionsExt;
+
 	let temp_dir = tempfile::tempdir().unwrap();
 	let config_path = temp_dir.path().join(".tramp.toml");
 	let hook_path = temp_dir.path().join("post_hook.sh");
@@ -470,12 +473,7 @@ fn test_post_hook_receives_exit_code() {
 		),
 	)
 	.unwrap();
-
-	#[cfg(unix)]
-	{
-		use std::os::unix::fs::PermissionsExt;
-		fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755)).unwrap();
-	}
+	fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755)).unwrap();
 
 	fs::write(
 		&config_path,
@@ -505,8 +503,11 @@ post_hook = "{}"
 	assert_eq!(exit_code, "42");
 }
 
+#[cfg(unix)]
 #[test]
 fn test_intercept_hook_replaces_command() {
+	use std::os::unix::fs::PermissionsExt;
+
 	let temp_dir = tempfile::tempdir().unwrap();
 	let config_path = temp_dir.path().join(".tramp.toml");
 	let hook_path = temp_dir.path().join("intercept_hook.sh");
@@ -514,12 +515,7 @@ fn test_intercept_hook_replaces_command() {
 
 	// Create an intercept hook that exits successfully without running the command
 	fs::write(&hook_path, "#!/bin/bash\necho \"intercepted\"\nexit 0\n").unwrap();
-
-	#[cfg(unix)]
-	{
-		use std::os::unix::fs::PermissionsExt;
-		fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755)).unwrap();
-	}
+	fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755)).unwrap();
 
 	fs::write(
 		&config_path,
@@ -554,20 +550,18 @@ intercept_hook = "{}"
 	);
 }
 
+#[cfg(unix)]
 #[test]
 fn test_intercept_hook_exit_code_propagates() {
+	use std::os::unix::fs::PermissionsExt;
+
 	let temp_dir = tempfile::tempdir().unwrap();
 	let config_path = temp_dir.path().join(".tramp.toml");
 	let hook_path = temp_dir.path().join("intercept_hook.sh");
 
 	// Create an intercept hook that exits with code 77
 	fs::write(&hook_path, "#!/bin/bash\nexit 77\n").unwrap();
-
-	#[cfg(unix)]
-	{
-		use std::os::unix::fs::PermissionsExt;
-		fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755)).unwrap();
-	}
+	fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755)).unwrap();
 
 	fs::write(
 		&config_path,
@@ -591,8 +585,11 @@ intercept_hook = "{}"
 		.code(77);
 }
 
+#[cfg(unix)]
 #[test]
 fn test_hook_receives_env_vars() {
+	use std::os::unix::fs::PermissionsExt;
+
 	let temp_dir = tempfile::tempdir().unwrap();
 	// Canonicalize to handle macOS /var -> /private/var symlinks
 	let temp_path = temp_dir.path().canonicalize().unwrap();
@@ -615,12 +612,7 @@ echo "TRAMP_HOOK_TYPE=$TRAMP_HOOK_TYPE" >> {}
 		),
 	)
 	.unwrap();
-
-	#[cfg(unix)]
-	{
-		use std::os::unix::fs::PermissionsExt;
-		fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755)).unwrap();
-	}
+	fs::set_permissions(&hook_path, fs::Permissions::from_mode(0o755)).unwrap();
 
 	fs::write(
 		&config_path,
